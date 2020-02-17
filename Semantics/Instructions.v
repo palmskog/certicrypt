@@ -45,20 +45,20 @@ Module Type INSTR (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
 
  Parameter ceqb_spec : forall x y, if ceqb x y then x = y else x <> y.
 
- Notation Local "[ x ; .. ; y ]" := 
+ Local Notation "[ x ; .. ; y ]" := 
   (@cons instr x .. (@cons instr y (@nil instr)) ..).
 
- Notation Local "'If' e 'then' c1 'else' c2" := (Cond e c1 c2) (at level 65).
+ Local Notation "'If' e 'then' c1 'else' c2" := (Cond e c1 c2) (at level 65).
 
- Notation Local "'If' e '_then' c" := (Cond e c nil) (at level 65).
+ Local Notation "'If' e '_then' c" := (Cond e c nil) (at level 65).
 
- Notation Local "'while' e 'do' c" := (While e c) (at level 65).
+ Local Notation "'while' e 'do' c" := (While e c) (at level 65).
 
- Notation Local "d '<c-' f 'with' a" := (Call d f a) (at level 61). 
+ Local Notation "d '<c-' f 'with' a" := (Call d f a) (at level 61). 
 
- Notation Local "x '<-' e" := (Instr (Assign x e)) (at level 65).
+ Local Notation "x '<-' e" := (Instr (Assign x e)) (at level 65).
 
- Notation Local " x '<$-' d " := (Instr (Random x d)) (at level 65).
+ Local Notation " x '<$-' d " := (Instr (Random x d)) (at level 65).
 
  Parameter instr_ind2 : forall (Pi: instr -> Prop) (Pc:cmd -> Prop),
   (forall i, Pi (Instr i)) ->
@@ -115,20 +115,20 @@ Module MakeInstr (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
 
  Definition t := instr.
 
- Notation Local "[ x ; .. ; y ]" := 
+ Local Notation "[ x ; .. ; y ]" := 
   (@cons instr x .. (@cons instr y (@nil instr)) ..).
 
- Notation Local "'If' e 'then' c1 'else' c2" := (Cond e c1 c2) (at level 65).
+ Local Notation "'If' e 'then' c1 'else' c2" := (Cond e c1 c2) (at level 65).
 
- Notation Local "'If' e '_then' c" := (Cond e c nil) (at level 65).
+ Local Notation "'If' e '_then' c" := (Cond e c nil) (at level 65).
 
- Notation Local "'while' e 'do' c" := (While e c) (at level 65).
+ Local Notation "'while' e 'do' c" := (While e c) (at level 65).
 
- Notation Local "d '<c-' f 'with' a" := (Call d f a) (at level 61). 
+ Local Notation "d '<c-' f 'with' a" := (Call d f a) (at level 61). 
 
- Notation Local "x '<-' e" := (Instr (Assign x e)) (at level 65).
+ Local Notation "x '<-' e" := (Instr (Assign x e)) (at level 65).
 
- Notation Local " x '<$-' d " := (Instr (Random x d)) (at level 65).
+ Local Notation " x '<$-' d " := (Instr (Random x d)) (at level 65).
 
  Lemma instr_ind2 : forall (Pi: instr -> Prop) (Pc:cmd -> Prop),
   (forall i, Pi (Instr i)) ->
@@ -182,9 +182,9 @@ Module MakeInstr (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
 
  Definition bi_eqb (x y:baseInstr) : bool :=
   match x, y with
-  | Assign t1 v1 e1, Assign t2 v2 e2 =>
+  | @Assign t1 v1 e1, @Assign t2 v2 e2 =>
     if Var.veqb v1 v2 then E.eqb e1 e2 else false
-  | Random t1 v1 s1, Random t2 v2 s2 =>
+  | @Random t1 v1 s1, @Random t2 v2 s2 =>
     if Var.veqb v1 v2 then E.seqb s1 s2 else false
   | _, _ => false
   end.
@@ -220,7 +220,7 @@ Module MakeInstr (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
     else false
   | While e c, While e' c' => 
     if E.eqb e e' then eqb_list eqb c c' else false
-  | Call t x f a, Call t' x' f' a' => 
+  | @Call t x f a, @Call t' x' f' a' => 
     if Var.veqb x x' then 
      if Proc.eqb f f' then E.args_eqb a a' 
      else false

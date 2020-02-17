@@ -7,8 +7,13 @@
 *.cmx[as]
 *.annot
 *.vo
+*.vos
+*.vok
+*.vio
 *.glob
 *.aux
 *.depend
 
 Makefile.coq
+Makefile.coq.conf
+.lia.cache

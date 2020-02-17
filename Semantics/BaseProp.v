@@ -26,20 +26,20 @@ Module Type SEM_THEORY (Sem:SEM).
 
  Fixpoint fv_expr_rec (t:T.type) (res:Vset.t) (e:E.expr t) {struct e} : Vset.t :=
   match e with 
-  | E.Ecte _ _ => res 
-  | E.Evar t x => Vset.add x res 
+  | E.Ecte _ => res 
+  | @E.Evar t x => Vset.add (Var.mkV x) res 
   | E.Eop op args => dfold_left fv_expr_rec args res
-  | E.Eexists t x e1 e2 => 
+  | @E.Eexists t x e1 e2 => 
     Vset.union 
-    (Vset.remove x (fv_expr_rec Vset.empty e1)) 
+    (Vset.remove (Var.mkV x) (fv_expr_rec Vset.empty e1)) 
     (fv_expr_rec res e2)
-  | E.Eforall t x e1 e2 => 
+  | @E.Eforall t x e1 e2 => 
     Vset.union 
-    (Vset.remove x (fv_expr_rec Vset.empty e1))
+    (Vset.remove (Var.mkV x) (fv_expr_rec Vset.empty e1))
     (fv_expr_rec res e2)
-  | E.Efind t x e1 e2 => 
+  | @E.Efind t x e1 e2 => 
     Vset.union 
-    (Vset.remove x (fv_expr_rec Vset.empty e1))
+    (Vset.remove (Var.mkV x) (fv_expr_rec Vset.empty e1))
     (fv_expr_rec res e2)
   end.
 
@@ -57,12 +57,12 @@ Module Type SEM_THEORY (Sem:SEM).
   match d with
   | E.Dnat e => fv_expr e 
   | E.DZ e1 e2 => Vset.union (fv_expr e1) (fv_expr e2)
-  | E.Dprod t1 t2 s1 s2  => Vset.union (fv_distr s1) (fv_distr s2) 
+  | @E.Dprod t1 t2 s1 s2  => Vset.union (fv_distr s1) (fv_distr s2) 
   | _ => Vset.empty
   end.
 
  Definition eeq_mem X k (m1 m2:Mem.t k) :=
-  forall t (x:Var.var t), ~Vset.mem x X -> m1 x = m2 x.
+  forall t (x:Var.var t), ~Vset.mem (Var.mkV x) X -> Mem.get m1 (Var.mkV x) = Mem.get m2 (Var.mkV x).
 
  Definition Modify E X c := forall k (m:Mem.t k), range (eeq_mem X m) ([[c]] E m).
 
@@ -73,7 +73,6 @@ Module Type SEM_THEORY (Sem:SEM).
   mu ([[c]] E m) (charfun P).
  
  Definition EP k (e:E.expr T.Bool) : Mem.t k -o> boolO := @E.eval_expr k _ e.
- Implicit Arguments EP [].
  
  (** Relations over memories *) 
  Definition mem_rel := forall k, Mem.t k -> Mem.t k -> Prop.
@@ -83,7 +82,7 @@ Module Type SEM_THEORY (Sem:SEM).
  Notation "P1 /-\ P2" := (@andR P1 P2) (at level 80, right associativity).
 
  Definition req_mem k X (m1 m2:Mem.t k) := 
-  forall t (x:Var.var t), Vset.mem x X -> m1 x = m2 x.
+  forall t (x:Var.var t), Vset.mem (Var.mkV x) X -> Mem.get m1 (Var.mkV x) = Mem.get m2 (Var.mkV x).
 
  Notation "m1 '=={' X '}' m2" := 
   (req_mem X m1 m2) (at level 70, no associativity).
@@ -91,7 +90,6 @@ Module Type SEM_THEORY (Sem:SEM).
  Definition kreq_mem X : mem_rel := fun k => @req_mem k X.
 
  Definition req_mem_rel X P : mem_rel := (kreq_mem X) /-\ P.
- Implicit Arguments req_mem_rel [].
 
  Definition decMR (P:mem_rel) := forall k x y, sumbool (P k x y) (~P k x y).
  
@@ -106,7 +104,7 @@ Module Type SEM_THEORY (Sem:SEM).
   equiv (kreq_mem I) E1 c1 E2 c2 (kreq_mem O).
 
  Definition Vset_of_var_decl (lt:list T.type) (lv:var_decl lt) : Vset.t :=
-  dfold_right (fun t (x:Var.var t) r => Vset.add x r) Vset.empty lv.
+  dfold_right (fun t (x:Var.var t) r => Vset.add (Var.mkV x) r) Vset.empty lv.
 
  Record info (pt:list T.type) (parms:var_decl pt) 
   (body:cmd) (t:T.type) (re:E.expr t) : Type := 
@@ -367,7 +365,7 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
    Qed.
    
    Lemma get_upd_diff : forall m tx (x:Var.var tx) ty (y:Var.var ty) a, 
-    Var.mkV x <> y -> get (upd m x a) y = get m y.
+    Var.mkV x <> Var.mkV y -> get (upd m x a) y = get m y.
    Proof. 
     destruct x; destruct y; destruct m; simpl; intros; trivial.
     generalize (PosEq.eqb_spec p p0).
@@ -428,7 +426,7 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
    Qed.
 
    Lemma get_remove_diff : forall m tx (x:Var.var tx) ty (y:Var.var ty), 
-    Var.mkV x <> y -> 
+    Var.mkV x <> Var.mkV y -> 
     get (remove x m) y = get m y.
    Proof. 
     destruct x; destruct y; destruct m; simpl; intros; trivial.
@@ -554,7 +552,7 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
      (la:list (elem A)) (lb : list (elem B)) : list (elem C) :=
      match lb with
      | nil => nil
-     | (mkE t b) :: lb =>
+     | (mkE _ t b) :: lb =>
        if test t then 
        match assoc t la with
        | None => 
@@ -662,7 +660,7 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
    Fixpoint forallb_assoc (l:list (elem A)) (f : forall t, A t -> bool) :=
     match l with
     | nil => true
-    | (mkE t a)::l => 
+    | (mkE _ t a)::l => 
       if f t a then 
        forallb_assoc l (fun t' a => if T.eqb t' t then true else f t' a)
        else false
@@ -974,9 +972,8 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
  Hint Resolve iffMR_refl implMR_refl.
 
  Definition Meq : mem_rel := fun k (x y:Mem.t k) => x = y.
- Implicit Arguments Meq [ ].
  
- Lemma Meq_refl : forall k (m:Mem.t k), Meq k m m.
+ Lemma Meq_refl : forall k (m:Mem.t k), @Meq k m m.
  Proof. 
   unfold Meq; trivial. 
  Qed.
@@ -984,13 +981,13 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
  Hint Resolve Meq_refl.
 
  Lemma Meq_sym : forall k (m1 m2:Mem.t k), 
-  Meq k m1 m2 -> Meq k m2 m1.
+  @Meq k m1 m2 -> @Meq k m2 m1.
  Proof. 
   unfold Meq; auto. 
  Qed. 
 
  Lemma Meq_trans : forall k (m1 m2 m3:Mem.t k), 
-  Meq k m1 m2 -> Meq k m2 m3 -> Meq k m1 m3.
+  @Meq k m1 m2 -> @Meq k m2 m3 -> @Meq k m1 m3.
  Proof. 
   unfold Meq; eauto using trans_eq. 
  Qed.
@@ -1006,7 +1003,7 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
  (** ** Sub equality of memories *)
 
  Definition req_mem k X (m1 m2:Mem.t k) := 
-  forall t (x:Var.var t), Vset.mem x X -> m1 x = m2 x.
+  forall t (x:Var.var t), Vset.mem (Var.mkV x) X -> Mem.get m1 (Var.mkV x) = Mem.get m2 (Var.mkV x).
 
  Notation " m1 '=={' X '}' m2 " := 
   (req_mem X m1 m2) (at level 70, no associativity).  
@@ -1045,7 +1042,7 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
  Qed.
 
  Add Parametric Morphism (k:nat) : (req_mem (k:=k)) 
-  with signature Vset.subset ==> (@Meq k) ==> (@Meq k) ==> inverse impl 
+  with signature Vset.subset ==> (@Meq k) ==> (@Meq k) ==> Basics.flip impl 
   as req_mem_weaken_morph.
  Proof.
   unfold flip; red; intros.
@@ -1119,10 +1116,10 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
   
  Lemma req_mem_update : forall k X (m m':Mem.t k) t (d:Var.var t) v,
   m =={X} m' -> 
-  m{!d<-- v!} =={Vset.add d X} m'{!d<--v!}.
+  m{!(Var.mkV d)<-- v!} =={Vset.add (Var.mkV d) X} m'{!(Var.mkV d)<--v!}.
  Proof.
   intros k X m m' td d v H t x0 Hmem.
-  destruct (VarP.eq_dec d x0).
+  destruct (VarP.eq_dec (Var.mkV d) (Var.mkV x0)).
   inversion e; simpl.
   repeat rewrite Mem.get_upd_same; auto.
   repeat rewrite Mem.get_upd_diff; trivial.
@@ -1130,24 +1127,24 @@ Module Make (S:SEM). (* <: SEM_THEORY S. *)
  Qed. 
 
  Lemma req_mem_upd_disjoint : forall t (x:Var.var t) k (m:Mem.t k) v X, 
-   Vset.mem x X = false -> m =={ X}m {!x <-- v!}.
+   Vset.mem (Var.mkV x) X = false -> m =={ X}m {!(Var.mkV x) <-- v!}.
  Proof.
   unfold req_mem; intros.
-  destruct (Vset.ET.eq_dec x x0).
-  rewrite (e: Var.mkV x = x0) in H; rewrite H in H0; trivialb.
+  destruct (Vset.ET.eq_dec (Var.mkV x) (Var.mkV x0)).
+  rewrite (e: Var.mkV x = Var.mkV x0) in H; rewrite H in H0; trivialb.
   rewrite Mem.get_upd_diff; trivial.
  Qed.
 
  
  Definition update_mem k (m1:Mem.t k) (X:Vset.t) (m2:Mem.t k) : Mem.t k := 
-  Vset.fold (fun x m => m {! x <-- m2 x!}) X m1.
+  Vset.fold (fun x m => m {! x <-- Mem.get m2 x!}) X m1.
  
  Notation "m1 '{!' X '<<-' m2 '!}'" := (update_mem m1 X m2) (at level 60).
  
  Lemma update_mem_aux : forall k l (m1 m2:Mem.t k), 
-  (forall t (x:Var.var t), InA (@Logic.eq Var.t) x l -> 
+  (forall t (x:Var.var t), InA (@Logic.eq Var.t) (Var.mkV x) l -> 
    (fold_left (fun m (x:Var.t) => 
-    m {! x <-- m2 x !}) l m1) x = m2 x) /\
+    m {! x <-- Mem.get m2 x !}) l m1) x = m2 x) /\
   (forall t (x:Var.var t), ~ InA (@Logic.eq Var.t) x l -> 
    (fold_left (fun m (x:Var.t) => 
     m {! x <-- m2 x !}) l m1) x = m1 x).

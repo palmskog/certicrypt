@@ -78,7 +78,7 @@ Qed.
 Lemma list_prod_nil t1 t2 (l1 : list t1) (l2 : list t2) : 
   l1 <> nil -> l2 <> nil -> list_prod l1 l2 <> nil.
 Proof.
- intros t1 t2 l1 l2 H1 H2 H.
+ intros H1 H2 H.
  assert (length (list_prod l1 l2) = 0%nat).
  rewrite H; trivial.
  rewrite prod_length in H0.
@@ -421,7 +421,7 @@ Fixpoint pow (n m:nat) {struct m} : nat :=
 Infix "^" := pow : nat_scope.
 
 Definition pow_N (n m:N) : N :=
- Nnat.N_of_nat (pow (Nnat.nat_of_N n) (Nnat.nat_of_N m)). 
+ N.of_nat (pow (N.to_nat n) (N.to_nat m)).
 
 Lemma pow_lt_0 : forall n c, 0 < n -> 0 < n ^ c.
 Proof.
@@ -512,7 +512,7 @@ Proof.
  auto.
 Qed.
 
-Implicit Arguments nat_eqb_true [n1 n2].
+Arguments nat_eqb_true [n1 n2].
 
 Lemma nat_eqb_refl : forall n, nat_eqb n n = true.
 Proof.

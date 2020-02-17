@@ -41,8 +41,8 @@ Module Type UOP (UT:UTYPE) (T:TYPE UT).
  Parameter ceval_op_spec : forall k op args,
   @eval_op k op args = fst (@ceval_op k op args).
 
- Implicit Arguments interp_op [k].  
- Implicit Arguments cinterp_op [k].
+ Arguments interp_op [k].  
+ Arguments cinterp_op [k].
 
 End UOP.
 
@@ -66,12 +66,12 @@ Module EmptyUop (UT:UTYPE) (T:TYPE UT) <: UOP UT T.
   Definition interp_op (k : nat) (op : t) : T.type_op k (targs op) (tres op) :=
     match op as op0 return T.type_op k (targs op0) (tres op0) with end.
 
-  Implicit Arguments interp_op [k].
+  Arguments interp_op [k].
 
   Definition cinterp_op (k : nat) (op : t) : T.ctype_op k (targs op) (tres op) :=
     match op as op0 return T.ctype_op k (targs op0) (tres op0) with end.
 
-  Implicit Arguments cinterp_op [k].
+  Arguments cinterp_op [k].
 
   Definition eval_op k
     (op:t) (args: dlist (T.interp k) (targs op)) : T.interp k (tres op) :=
@@ -394,8 +394,8 @@ Module Type OP (UT:UTYPE) (T:TYPE UT) (Uop:UOP UT T).
    | OZlt =>  Zlt_bool
    | OZge => Zge_bool
    | OZgt => Zgt_bool
-   | OZopp => Zopp
-   | OZdiv => Zdiv
+   | OZopp => Z.opp
+   | OZdiv => Z.div
    | OZmod => Zmod
    | OZpow => Zpower
    (* Boolean operations *)
@@ -478,8 +478,8 @@ Module Type OP (UT:UTYPE) (T:TYPE UT) (Uop:UOP UT T).
    | OZlt => fun x y => (Zlt_bool x y, size_Z y)
    | OZge => fun x y => (Zge_bool x y, size_Z y)
    | OZgt => fun x y => (Zgt_bool x y, size_Z y)
-   | OZopp => fun x => (Zopp x, size_Z x)
-   | OZdiv => fun x y => (Zdiv x y, size_Z x)
+   | OZopp => fun x => (Z.opp x, size_Z x)
+   | OZdiv => fun x y => (Z.div x y, size_Z x)
    | OZmod => fun x y => (Zmod x y, size_Z y)
    | OZpow => fun x y => (Zpower x y, size_Z x)
    (* Boolean operations *)
@@ -502,8 +502,8 @@ Module Type OP (UT:UTYPE) (T:TYPE UT) (Uop:UOP UT T).
 
  End EVAL.
 
- Implicit Arguments eval_op [k].
- Implicit Arguments ceval_op [k].
+ Arguments eval_op [k].
+ Arguments ceval_op [k].
 
  Parameter ceval_op_spec : forall k op args,
   @eval_op k op args = fst (@ceval_op k op args).
@@ -912,8 +912,8 @@ Module MakeOp (UT:UTYPE) (T:TYPE UT) (Uop : UOP UT T) <: OP UT T Uop.
    | OZlt =>  Zlt_bool
    | OZge => Zge_bool
    | OZgt => Zgt_bool
-   | OZopp => Zopp
-   | OZdiv => Zdiv
+   | OZopp => Z.opp
+   | OZdiv => Z.div
    | OZmod => Zmod
    | OZpow => Zpower
    (* Boolean operations *)
@@ -996,8 +996,8 @@ Module MakeOp (UT:UTYPE) (T:TYPE UT) (Uop : UOP UT T) <: OP UT T Uop.
    | OZlt => fun x y => (Zlt_bool x y, size_Z y)
    | OZge => fun x y => (Zge_bool x y, size_Z y)
    | OZgt => fun x y => (Zgt_bool x y, size_Z y)
-   | OZopp => fun x => (Zopp x, size_Z x)
-   | OZdiv => fun x y => (Zdiv x y, size_Z x)
+   | OZopp => fun x => (Z.opp x, size_Z x)
+   | OZdiv => fun x y => (Z.div x y, size_Z x)
    | OZmod => fun x y => (Zmod x y, size_Z y)
    | OZpow => fun x y => (Zpower x y, size_Z x)
    (* Boolean operations *)
@@ -1020,8 +1020,8 @@ Module MakeOp (UT:UTYPE) (T:TYPE UT) (Uop : UOP UT T) <: OP UT T Uop.
 
  End EVAL.
 
- Implicit Arguments eval_op [k].
- Implicit Arguments ceval_op [k].
+ Arguments eval_op [k].
+ Arguments ceval_op [k].
 
  Lemma ceval_op_spec : forall k op args,
   @eval_op k op args = fst (@ceval_op k op args).
@@ -1070,6 +1070,10 @@ Module MakeOp (UT:UTYPE) (T:TYPE UT) (Uop : UOP UT T) <: OP UT T Uop.
 
  End Odec.
  
- Include DecidableEqDepSet Odec.
+ Module OdecEqDep := DecidableEqDep Odec.
+
+ Definition eq_dep_eq := OdecEqDep.eq_dep_eq.
+ Definition UIP_refl := OdecEqDep.UIP_refl.
+ Definition inj_pair2 := OdecEqDep.inj_pairT2.
 
 End MakeOp.

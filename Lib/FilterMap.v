@@ -31,10 +31,12 @@ Fixpoint filter_map (A B:Type)
 Lemma UIP_bool : UIP_ bool.
 Proof.
  apply eq_dep_eq__UIP; red.
+ intros.
+ unfold Eq_dep_eq_on.
  apply eq_dep_eq_dec.
  intros [ | ] [ | ]; auto.
  right; discriminate.
-Qed. 
+Qed.
 
 Lemma In_filter_map : forall (A B:Type) (P:A -> bool) (f:forall a, P a -> B) 
  (l:list A) (a:A) (H:P a) (Hin:In a l),

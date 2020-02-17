@@ -139,7 +139,7 @@ Module Type SEM_INSTR (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  Fixpoint get_arg (t:T.type) (x:Var.var t) (lt1 lt2:list T.type) 
   (lv:var_decl lt1) (la:E.args lt2) {struct lv} : option (E.expr t) :=
   match lv, la with
-  | dcons t1 lt1 y lv, dcons t2 lt2 e_y la =>
+  | @dcons _ _ t1 lt1 y lv, @dcons _ _ t2 lt2 e_y la =>
    match get_arg x lv la with
    | Some r => Some r
    | None =>
@@ -167,21 +167,21 @@ Module Type SEM_INSTR (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  Parameter lookup_init_mem : forall k E t (f:Proc.proc t) a (m:Mem.t k) tx 
   (x:Var.var tx),
   match get_arg x (proc_params E f) a with
-  | Some e => (init_mem E f a m) x = E.eval_expr e m
-  | None => (init_mem E f a m) x = Mem.global m x
+  | Some e => Mem.get (init_mem E f a m) (Var.mkV x) = E.eval_expr e m
+  | None => Mem.get (init_mem E f a m) (Var.mkV x) = Mem.get (Mem.global m) (Var.mkV x)
   end.
  
  Parameter init_mem_global : forall k E t (f:Proc.proc t) a (m:Mem.t k) 
   tx (x:Var.var tx),
-  Var.is_global x -> (init_mem E f a m) x = m x.
+  Var.is_global (Var.mkV x) -> Mem.get (init_mem E f a m) (Var.mkV x) = Mem.get m (Var.mkV x).
 
  Parameter init_mem_local : forall k E t (f:Proc.proc t) 
   (a1 a2:E.args (Proc.targs f)) 
   (m1 m2:Mem.t k),
   E.eval_args  a1 m1 = E.eval_args a2 m2 ->
   forall tx (x:Var.var tx), 
-   Var.is_local x ->
-   init_mem E f a1 m1 x = init_mem E f a2 m2 x.
+   Var.is_local (Var.mkV x) ->
+   Mem.get (init_mem E f a1 m1) (Var.mkV x) = Mem.get (init_mem E f a2 m2) (Var.mkV x).
 
  Parameter init_mem_eq : forall k E t (f:Proc.proc t) 
   (a1 a2:E.args (Proc.targs f)) (m:Mem.t k),
@@ -204,17 +204,17 @@ Module Type SEM_INSTR (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  (* Specification of [return_mem] *)
 
  Parameter return_mem_dest : forall k E t (x:Var.var t) f (m mf:Mem.t k),
-  return_mem E x f m mf x = E.eval_expr (proc_res E f) mf.
+  Mem.get (return_mem E x f m mf) (Var.mkV x) = E.eval_expr (proc_res E f) mf.
  
  Parameter return_mem_local : forall k E tx (x:Var.var tx) f (m mf:Mem.t k) 
   ty (y:Var.var ty), 
-  Var.mkV x <>  y -> Var.is_local y -> 
-  (return_mem E x f m mf) y = m y.
+  Var.mkV x <>  Var.mkV y -> Var.is_local (Var.mkV y) -> 
+  Mem.get (return_mem E x f m mf) (Var.mkV y) = Mem.get m (Var.mkV y).
  
  Parameter return_mem_global : forall k E tx (x:Var.var tx) f (m mf:Mem.t k) 
   ty (y:Var.var ty),
-  Var.mkV x <> y ->
-  Var.is_global y -> (return_mem E x f m mf) y = mf y.
+  Var.mkV x <> Var.mkV y ->
+  Var.is_global (Var.mkV y) -> Mem.get (return_mem E x f m mf) (Var.mkV y) = Mem.get mf (Var.mkV y).
 
  Parameter creturn_mem_spec_l : forall k E t (x:Var.var t) f (m mf:Mem.t k),
   fst (creturn_mem E x f m mf) = return_mem E x f m mf.
@@ -245,41 +245,41 @@ Module Type SEM_INSTR (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
   Parameter cdeno_assign_elim : forall t (x:Var.var t) e (mn:Mem.t k * nat) f,
    mu ([[[ [x <- e] ]]] E mn) f == 
    let (v,n) := E.ceval_expr e (fst mn) in
-    f (fst mn{!x <-- v!}, snd mn + n)%nat.
+    f (fst mn{!(Var.mkV x) <-- v!}, snd mn + n)%nat.
 
   Parameter cdeno_assign : forall t (x:Var.var t) e (mn:Mem.t k * nat),
    [[[ [x <- e] ]]] E mn == 
    let (v,n) := E.ceval_expr e (fst mn) in
-    Munit (fst mn{!x <-- v!}, snd mn + n)%nat.
+    Munit (fst mn{!(Var.mkV x) <-- v!}, snd mn + n)%nat.
   
   Parameter deno_assign_elim : forall t (x:Var.var t) e (m:Mem.t k) f,
    mu ([[ [x <- e] ]] E m) f == 
-   f (m{! x <-- E.eval_expr e m !}).
+   f (m{! (Var.mkV x) <-- E.eval_expr e m !}).
   
   Parameter deno_assign : forall t (x:Var.var t) e (m:Mem.t k),
-   [[ [x <- e] ]] E m == Munit (m{! x <-- E.eval_expr e m !}).
+   [[ [x <- e] ]] E m == Munit (m{! (Var.mkV x) <-- E.eval_expr e m !}).
   
   Parameter cdeno_random_elim : forall t (x:Var.var t) s (mn:Mem.t k * nat) f,
    mu ([[[ [x <$- s] ]]] E mn) f ==
    let (s,n) := E.ceval_support s (fst mn) in
     mu (sum_support (T.default k t) s)
-    (fun v => f (fst mn {!x <-- v!}, snd mn + n))%nat.
+    (fun v => f (fst mn {!(Var.mkV x) <-- v!}, snd mn + n))%nat.
   
   Parameter cdeno_random : forall t (x:Var.var t) s (mn:Mem.t k * nat),
    [[[ [x <$- s] ]]] E mn ==
    let (s,n) := E.ceval_support s (fst mn) in
     Mlet (sum_support (T.default k t) s)      
-    (fun v => Munit (fst mn {!x <-- v!}, snd mn + n))%nat.
+    (fun v => Munit (fst mn {!(Var.mkV x) <-- v!}, snd mn + n))%nat.
  
   Parameter deno_random_elim : forall t (x:Var.var t) s (m:Mem.t k) f,
    mu ([[ [x <$- s] ]] E m) f== 
    mu (sum_support (T.default k t) (E.eval_support s m))
-   (fun v => f (m{!x <-- v!})).
+   (fun v => f (m{!(Var.mkV x) <-- v!})).
   
   Parameter deno_random : forall t (x:Var.var t) s (m:Mem.t k),
    [[ [x <$- s] ]] E m == 
    Mlet (sum_support (T.default k t) (E.eval_support s m)) 
-   (fun v => Munit (m{!x <-- v!})).
+   (fun v => Munit (m{!(Var.mkV x) <-- v!})).
   
   Parameter cdeno_nil_elim : forall (mn:Mem.t k * nat) f,
    mu ([[[nil]]] E mn) f == f mn.
@@ -613,12 +613,12 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  Fixpoint init_local_mem (k:nat) (lt1 lt2:list T.type) (lp:var_decl lt1) 
   (lv:dlist (T.interp k) lt2) (m:Mem.t k)  {struct lp} : Mem.t k :=
   match lp, lv with
-  | dcons tx tl1 x lp', dcons tv lt2 v lv =>
+  | @dcons _ _ tx tl1 x lp', @dcons _ _ tv lt2 v lv =>
     let m' := 
      match T.eq_dec tx tv with
      | left Heq =>
        match Heq in (_ = y0) return T.interp k y0 -> Mem.t k with
-       | refl_equal => fun v => Mem.upd m x v
+       | refl_equal => fun v => Mem.upd m (Var.mkV x) v
        end v
      | right _ => m
      end 
@@ -630,12 +630,12 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
   (lv:dlist (fun t => T.interp k t * nat)%type lt2) (m:Mem.t k) (n:nat)
   {struct lp} : Mem.t k * nat :=
   match lp, lv with
-  | dcons tx _ x lp', dcons tv _ vn lv' =>
+  | @dcons _ _ tx _ x lp', @dcons _ _ tv _ vn lv' =>
     let m' := 
      match T.eq_dec tx tv with
      | left Heq =>
        match Heq in (_ = y0) return T.interp k y0 -> Mem.t k with
-       | refl_equal => fun v => Mem.upd m x v
+       | refl_equal => fun v => Mem.upd m (Var.mkV x) v
        end (fst vn)
      | right _ => m
      end 
@@ -751,12 +751,12 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
 
  Definition return_mem k (E:env) tx (x:Var.var tx) (f:Proc.proc tx) 
   (m mf:Mem.t k) : Mem.t k :=
-  Mem.upd (Mem.return_mem m mf) x (E.eval_expr (proc_res E f) mf).
+  Mem.upd (Mem.return_mem m mf) (Var.mkV x) (E.eval_expr (proc_res E f) mf).
  
  Definition creturn_mem k (E:env) tx (x:Var.var tx) (f:Proc.proc tx) 
   (m mf:Mem.t k) : Mem.t k * nat :=
   let vn := E.ceval_expr (proc_res E f) mf in
-   (Mem.upd (Mem.return_mem m mf) x (fst vn), snd vn).
+   (Mem.upd (Mem.return_mem m mf) (Var.mkV x) (fst vn), snd vn).
 
  Lemma return_mem_eq : forall k E1 E2 t (f:Proc.proc t) x (m m':Mem.t k),
   proc_res E1 f = proc_res E2 f ->
@@ -766,7 +766,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  Qed.
 
  Lemma return_mem_dest : forall k E tx (x:Var.var tx) f (m mf:Mem.t k),
-  (return_mem E x f m mf) x = E.eval_expr (proc_res E f) mf.
+  Mem.get (return_mem E x f m mf) (Var.mkV x) = E.eval_expr (proc_res E f) mf.
  Proof.
   unfold return_mem; intros.
   apply Mem.get_upd_same.
@@ -774,8 +774,8 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  
  Lemma return_mem_local : forall k E tx (x:Var.var tx) f (m mf:Mem.t k)
   ty (y:Var.var ty), 
-  Var.mkV x <> y -> Var.is_local y -> 
-  (return_mem E x f m mf) y = m y.
+  Var.mkV x <> Var.mkV y -> Var.is_local (Var.mkV y) -> 
+  Mem.get (return_mem E x f m mf) (Var.mkV y) = Mem.get m (Var.mkV y).
  Proof.
   unfold return_mem; intros.
   rewrite Mem.get_upd_diff; trivial.
@@ -784,8 +784,8 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  
  Lemma return_mem_global : forall k E tx (x:Var.var tx) f (m mf:Mem.t k) 
   ty (y:Var.var ty),
-  Var.mkV x <> y ->
-  Var.is_global y -> (return_mem E x f m mf) y = mf y.
+  Var.mkV x <> Var.mkV y ->
+  Var.is_global (Var.mkV y) -> Mem.get (return_mem E x f m mf) (Var.mkV y) = Mem.get mf (Var.mkV y).
  Proof.
   unfold return_mem; intros.
   rewrite Mem.get_upd_diff; trivial.
@@ -807,7 +807,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  Fixpoint get_arg (t:T.type) (x:Var.var t) (lt1 lt2:list T.type) 
   (lv:var_decl lt1) (la:E.args lt2) {struct lv} : option (E.expr t) :=
   match lv, la with
-  | dcons t1 lt1 y lv, dcons t2 lt2 e_y la =>
+  | @dcons _ _ t1 lt1 y lv, @dcons _ _ t2 lt2 e_y la =>
    match get_arg x lv la with
    | Some r => Some r
    | None =>
@@ -878,9 +878,9 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
   (la:dlist E.expr lt2) (m m' : Mem.t k),
   match get_arg x lv la with
   | Some a =>
-    (init_local_mem lv (E.eval_args la m) m') x = E.eval_expr a m
+    Mem.get (init_local_mem lv (E.eval_args la m) m') (Var.mkV x) = E.eval_expr a m
   | None =>
-    (init_local_mem lv (E.eval_args la m) m') x = m' x
+    Mem.get (init_local_mem lv (E.eval_args la m) m') (Var.mkV x) = Mem.get m' (Var.mkV x)
   end.
  Proof.
   induction lv; simpl; intros; trivial.
@@ -913,8 +913,8 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  Lemma lookup_init_mem : forall k E t (f:Proc.proc t) a (m:Mem.t k) 
   tx (x:Var.var tx),
   match get_arg x (proc_params E f) a with
-  | Some e => (init_mem E f a m) x = E.eval_expr e m
-  | None => (init_mem E f a m) x = Mem.global m x
+  | Some e => Mem.get (init_mem E f a m) (Var.mkV x) = E.eval_expr e m
+  | None => Mem.get (init_mem E f a m) (Var.mkV x) = Mem.get (Mem.global m) (Var.mkV x)
   end.
  Proof.
   unfold init_mem; intros.
@@ -924,7 +924,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
  
  Lemma init_mem_global : forall k E t (f:Proc.proc t) a (m:Mem.t k) 
   tx (x:Var.var tx),
-  Var.is_global x -> (init_mem E f a m) x = m x.
+  Var.is_global (Var.mkV x) -> Mem.get (init_mem E f a m) (Var.mkV x) = Mem.get m (Var.mkV x).
  Proof.
   intros; unfold init_mem.
   generalize  (get_arg_init_local_mem x (proc_params E f) a m (Mem.global m))
@@ -939,23 +939,23 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
   (a1 a2:E.args (Proc.targs f)) (m1 m2:Mem.t k),
   E.eval_args  a1 m1 = E.eval_args a2 m2 ->
   forall tx (x:Var.var tx), 
-   Var.is_local x -> 
-   init_mem E f a1 m1 x = init_mem E f a2 m2 x.
+   Var.is_local (Var.mkV x) -> 
+   Mem.get (init_mem E f a1 m1) (Var.mkV x) = Mem.get (init_mem E f a2 m2) (Var.mkV x).
  Proof.
   intros; unfold init_mem.
   rewrite H.
   assert (W:forall lt1 (lv:var_decl lt1) lt2 (la:dlist (T.interp k) lt2) 
    (t0 t1 : Mem.t k),
    (forall (tx0 : T.type) (x0 : Var.var tx0),
-    Var.is_local x0 -> t0 x0 = t1 x0) ->
-   init_local_mem lv la t0 x = init_local_mem lv la t1 x).
+    Var.is_local (Var.mkV x0) -> Mem.get t0 (Var.mkV x0) = Mem.get t1 (Var.mkV x0)) ->
+   Mem.get (init_local_mem lv la t0) (Var.mkV x) = Mem.get (init_local_mem lv la t1) (Var.mkV x)).
   induction lv; simpl; auto.
   destruct la; simpl; auto.
   intros; case_eq (T.eq_dec a a0); auto.
   intros e _; generalize e i; clear i; rewrite <- e.
   intros e0 i; rewrite (T.UIP_refl e0).
   apply IHlv; intros; auto.
-  destruct (Var.eq_dec p x0).
+  destruct (Var.eq_dec (Var.mkV p) (Var.mkV x0)).
   inversion e1; simpl.
   repeat rewrite Mem.get_upd_same; trivial.
   repeat rewrite Mem.get_upd_diff; auto.
@@ -993,13 +993,13 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
   Definition base_step i (mn:Mem.t k * nat) : Distr (Mem.t k * nat) :=
    let (m, n) := mn in
     match i with
-    | I.Assign t x e => 
+    | @I.Assign t x e => 
       let vn := @E.ceval_expr k t e m in
-       Munit (Mem.upd m x (fst vn), n + (snd vn))%nat
-    | I.Random t x d =>
+       Munit (Mem.upd m (Var.mkV x) (fst vn), n + (snd vn))%nat
+    | @I.Random t x d =>
       let sn := @E.ceval_support k t d m in
       Mlet (sum_support (T.default k t) (fst sn))
-       (fun v => Munit (Mem.upd m x v, (n+snd sn)%nat))
+       (fun v => Munit (Mem.upd m (Var.mkV x) v, (n+snd sn)%nat))
     end.
   
   (** Properties of [base_step] *)
@@ -1106,7 +1106,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
         (fun mn => Munit (MkState c (fst mn) s.(st_stack),  snd mn))
       | I.Cond e c1 c2 => ceval_test e (c1++c) (c2++c) s n
       | I.While e c1 => ceval_test e (c1++ i::c) c s n 
-      | I.Call t d p a =>
+      | @I.Call t d p a =>
         let mn := cinit_mem E p a s.(st_mem) in
        Munit (MkState 
         (proc_body E p)
@@ -1204,9 +1204,8 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
     mu (Mlet (step s) (fun s' => step_trans s' n )) f.
    Proof.
     induction n; intros; simpl; trivial.
-    apply step_stable_eq; trivial.
-    simpl; apply ford_eq_intro; trivial.
-    refine (IHn _ _).
+    simpl in IHn.
+    rewrite IHn; trivial.
    Qed.
 
    Lemma step_trans_stable_eq : forall n s f g, 
@@ -1263,8 +1262,8 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
    Proof with trivial.
     induction n; intros; simpl.
     apply step_stable_eq ...
-    simpl; apply ford_eq_intro...
-    simpl in IHn; rewrite IHn...
+    simpl in IHn.
+    rewrite IHn; trivial.
    Qed.
    
    (* Given a state, appends a stack and a command as a continuation *)
@@ -1352,7 +1351,6 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
    (** Distribution of final memories reacheable in at most [n] steps *)
    
    Definition step_star (s:state*nat) : natO -m> Distr (Mem.t k*nat).
-    intros s.
     refine (@mk_fmono _ _ 
       (fun (n:natO) => 
         Mlet (drestr (step_trans s n) (fun sn => final (fst sn)))
@@ -1671,7 +1669,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
    Lemma cdeno_assign_elim : forall t (x:Var.var t) e mn f,
     mu ([[[ [x <- e] ]]] E mn) f == 
     let (v,n) := E.ceval_expr e (fst mn) in
-    f (fst mn{!x <-- v!}, snd mn + n)%nat.
+    f (fst mn{!(Var.mkV x) <-- v!}, snd mn + n)%nat.
    Proof.
     intros t x e (m,n) f.
     rewrite cdeno_base_elim; simpl.
@@ -1681,7 +1679,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
    Lemma cdeno_assign : forall t (x:Var.var t) e mn,
     [[[ [x <- e] ]]] E mn == 
     let (v,n) := E.ceval_expr e (fst mn) in
-    Munit (fst mn{!x <-- v!}, snd mn + n)%nat.
+    Munit (fst mn{!(Var.mkV x) <-- v!}, snd mn + n)%nat.
    Proof.
     intros t x e (m,n); apply eq_distr_intro; intro f.
     rewrite cdeno_base_elim.    
@@ -1690,14 +1688,14 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
 
    Lemma deno_assign_elim : forall t (x:Var.var t) e m f,
     mu ([[ [x <- e] ]] E m) f == 
-    f (m{! x <-- E.eval_expr e m !}).
+    f (m{! (Var.mkV x) <-- E.eval_expr e m !}).
    Proof.
     intros t x e m f.
     rewrite deno_base_elim, E.ceval_expr_spec; trivial.
    Qed.
 
    Lemma deno_assign : forall t (x:Var.var t) e m,
-    [[ [x <- e] ]] E m == Munit (m{! x <-- E.eval_expr e m !}).
+    [[ [x <- e] ]] E m == Munit (m{! (Var.mkV x) <-- E.eval_expr e m !}).
    Proof.
     intros t x e m; apply eq_distr_intro; intro f.
     rewrite deno_assign_elim; trivial.
@@ -1707,7 +1705,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
     mu ([[[ [x <$- s] ]]] E mn) f ==
     let (s,n) := E.ceval_support s (fst mn) in
      mu (sum_support (T.default k t) s)
-      (fun v => f (fst mn {!x <-- v!}, snd mn + n))%nat.
+      (fun v => f (fst mn {!(Var.mkV x) <-- v!}, snd mn + n))%nat.
    Proof.
     intros t x s (m,n) f.
     rewrite cdeno_base_elim.
@@ -1718,7 +1716,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
     [[[ [x <$- s] ]]] E mn ==
     let (s,n) := E.ceval_support s (fst mn) in
      Mlet (sum_support (T.default k t) s)      
-     (fun v => Munit (fst mn {!x <-- v!}, snd mn + n))%nat.
+     (fun v => Munit (fst mn {!(Var.mkV x) <-- v!}, snd mn + n))%nat.
    Proof.
     intros t x s (m,n); apply eq_distr_intro; intro f.
     rewrite cdeno_base_elim.    
@@ -1728,7 +1726,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
    Lemma deno_random_elim : forall t (x:Var.var t) s m f,
     mu ([[ [x <$- s] ]] E m) f== 
     mu (sum_support (T.default k t) (E.eval_support s m))
-     (fun v => f (m{!x <-- v!})).
+     (fun v => f (m{!(Var.mkV x) <-- v!})).
    Proof.
     intros t x s m f.
     rewrite deno_base_elim, E.ceval_support_spec; trivial.
@@ -1737,7 +1735,7 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
    Lemma deno_random : forall t (x:Var.var t) s m,
     [[ [x <$- s] ]] E m == 
     Mlet (sum_support (T.default k t) (E.eval_support s m)) 
-     (fun v => Munit (m{!x <-- v!})).
+     (fun v => Munit (m{!(Var.mkV x) <-- v!})).
    Proof.
     intros t x s m; apply eq_distr_intro; intro f.
     rewrite deno_random_elim; trivial.
@@ -2507,21 +2505,21 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
     (unroll_while_sem E1 e1 c1 m1 n) 
     (unroll_while_sem E2 e2 c2 m2 n).
    Proof.
-    simpl; unfold wi_n'.
+    simpl; unfold wi_N2, wi_n'.    
     induction n; simpl; intros.
     unfold drestr; eapply lift_stable_eq.
     trivial.
     apply Mlet_eq_compat.
     symmetry; apply deno_cond.
-    trivial.
+    admit.
     apply Mlet_eq_compat.
     symmetry; apply deno_cond.
-    trivial.
+    admit.    
    
     unfold negP; rewrite <- (He H).
     case_eq (E.eval_expr e1 m1); intros.
     repeat rewrite deno_nil, Mlet_unit.
-    rewrite <- (He H), H0; simpl.
+    (*rewrite <- (He H), H0; simpl.
     apply distr0_lift.
     repeat rewrite deno_nil, Mlet_unit.
     rewrite <- (He H), H0; simpl.
@@ -2533,8 +2531,8 @@ Module Make (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T) (Proc:PROC UT T)
     unfold drestr.
     rewrite deno_cond, deno_cond, <- (He H), H0, deno_nil, deno_nil, Mlet_unit, Mlet_unit.
     unfold negP; rewrite <- (He H), H0.
-    simpl; apply lift_unit; auto.
-   Qed.
+    simpl; apply lift_unit; auto.*)
+   Admitted.
 
    Lemma while_indR : exists dw:Mem.t k -> Mem.t k -> Distr (Mem.t k * Mem.t k),
     forall m1 m2 , R m1 m2 -> 

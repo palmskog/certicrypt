@@ -24,29 +24,29 @@ Module Type MEM (UT:UTYPE) (T:TYPE UT) (Var:VAR UT T).
 
  Coercion get : t >-> Funclass.
 
- Notation Local "m '[' x '<--' v ']'" := (upd m x v) (at level 60).
+ Notation "m '[' x '<--' v ']'" := (upd m x v) (at level 60).
 
- Parameter get_upd_same : forall k (m:t k) tx (x:Var.var tx) v, 
-  m[x <-- v] x = v.
+ Parameter get_upd_same : forall k (m:t k) (tx:T.type) (x:Var.var tx) v, 
+  m[(Var.mkV x) <-- v] (Var.mkV x) = v.
 
  Parameter get_upd_diff : forall k (m:t k) tx (x:Var.var tx) ty (y:Var.var ty) v,
-  Var.mkV x <> y -> m[x <-- v] y = m y.
+  Var.mkV x <> Var.mkV y -> m[(Var.mkV x) <-- v] (Var.mkV y) = m (Var.mkV y).
 
  Parameter global : forall k, t k -> t k.
 
  Parameter return_mem : forall k, t k -> t k -> t k.
 
  Parameter global_spec : forall k (m:t k) tx (x:Var.var tx), 
-  Var.is_global x -> m x = global m x.
+  Var.is_global (Var.mkV x) -> m (Var.mkV x) = global m (Var.mkV x).
 
  Parameter global_local : forall k m tx (x:Var.var tx),
-  Var.is_local x -> global m x = T.default k tx.
+  Var.is_local (Var.mkV x) -> global m (Var.mkV x) = T.default k tx.
 
  Parameter return_mem_local : forall k (m mf:t k) tx (x:Var.var tx),
-  Var.is_local x -> return_mem m mf x = m x.
+  Var.is_local (Var.mkV x) -> return_mem m mf (Var.mkV x) = m (Var.mkV x).
 
  Parameter return_mem_global : forall k (m mf:t k) tx (x:Var.var tx), 
-  Var.is_global x -> return_mem m mf x = mf x.
+  Var.is_global (Var.mkV x) -> return_mem m mf (Var.mkV x) = mf (Var.mkV x).
 
  Definition eq k (m1 m2:t k) := forall x, m1 x = m2 x.
  

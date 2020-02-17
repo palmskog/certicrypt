@@ -240,7 +240,7 @@ Section Map.
 
     Fixpoint map (t:tree A) : tree B:=
       match t with 
-      | Empty => Empty _
+      | Empty _ => Empty _
       | Node o tl tr => mkNode Beq_def (f o) (map tl) (map tr)
       end.
     Hypothesis Beq_def_spec : forall a, if Beq_def a then a = defB else a <> defB.
@@ -277,10 +277,10 @@ Section Map2.
   
   Fixpoint map2 (ta:tree A) (tb:tree B) {struct ta} : tree C :=
     match ta with
-    | Empty => map Ceq_def (f dA) tb
+    | Empty _ => map Ceq_def (f dA) tb
     | Node a tal tar =>
       match tb with
-      | Empty =>map Ceq_def (fun a => f a dB) ta
+      | Empty _ =>map Ceq_def (fun a => f a dB) ta
       | Node b tbl tbr => mkNode Ceq_def (f a b) (map2 tal tbl) (map2 tar tbr)
       end
      end.

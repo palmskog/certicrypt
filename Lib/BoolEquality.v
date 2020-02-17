@@ -670,7 +670,7 @@ Module PosEq <: EQBOOL_LEIBNIZ.
 
  Definition t := positive.
 
- Definition eqb := Peqb.
+ Definition eqb := Pos.eqb.
 
  Definition eqb_spec : forall x y, if eqb x y then x = y else x <> y.
  Proof.

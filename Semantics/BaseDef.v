@@ -14,7 +14,9 @@ Set Implicit Arguments.
 Require Import Bool.
 Require Import List.
 Require Export Relations.
-Require Export Cover.
+From ALEA Require Export Utheory.
+From ALEA Require Export Uprop.
+From ALEA Require Export Cover.
 Require Export Prelude.
 Require Import BoolEquality.
 Require Import Even Div2 Wf_nat.
@@ -134,13 +136,13 @@ Qed.
   apply (Ueq_orc x y); [auto|auto|].
   intro H'.
   apply (Ule_total x y); [auto|intro H''|intro H''].
-    absurd (0 == x - y + (y - x))%U.
+    absurd (0 == x - y + (y - x)).
       rewrite Uplus_sym.
       apply Uplus_neq_zero_left.
       apply Uminus_lt_non_zero.
       apply Ule_diff_lt; assumption.
       apply Oeq_sym in H; assumption.
-    absurd (0 == x - y + (y - x))%U.
+    absurd (0 == x - y + (y - x)).
       apply Uplus_neq_zero_left.
       apply Uminus_lt_non_zero.
       apply Ule_diff_lt; [assumption|auto].
@@ -264,7 +266,7 @@ Qed.
 
  Definition fabs_diff (A:Type) (f h : MF A) : MF A := 
                fun x =>  Uabs_diff (f x) (h x). 
- Implicit Arguments fabs_diff [A].
+ Arguments fabs_diff [A].
 
  Lemma fabs_diff_eq_compat: forall (A:Type) (f1 h1 f2 h2: MF A),
    f1 == f2 -> h1 == h2 ->
@@ -846,7 +848,7 @@ Qed.
 
 Definition feq (A:Type) (O:ord) (f1 f2:A -> O) := forall x, f1 x == f2 x.
 
-Implicit Arguments feq [A O].
+Arguments feq [A O].
 
 Infix "===" := feq (at level 70).
 
@@ -938,16 +940,16 @@ Section FINITE.
 End FINITE.
 
 Lemma finite_sum_le : forall (A:Type) (f1 f2:A -o> U) l,
- (forall x, In x l -> (f1 x <= f2 x)%tord) ->
- (finite_sum f1 l <= finite_sum f2 l)%tord.
+ (forall x, In x l -> (f1 x <= f2 x)) ->
+ (finite_sum f1 l <= finite_sum f2 l).
 Proof.
  induction l; simpl; trivial; intros.
  apply Uplus_le_compat; auto.
 Qed.
  
 Lemma finite_sum_eq : forall (A:Type) (f1 f2 : A-o>U) l,
- (forall x, In x l -> (f1 x == f2 x)%tord) ->
- (finite_sum f1 l == finite_sum f2 l)%tord.
+ (forall x, In x l -> (f1 x == f2 x)) ->
+ (finite_sum f1 l == finite_sum f2 l).
 Proof.
  induction l; simpl; trivial; intros.
  apply Uplus_eq_compat; auto.
@@ -1049,7 +1051,6 @@ Section SUMDOM.
  Variable default : A.
 
  Definition nth_dom (dom:list A) : (A -o> U) -m> (natO -o> U).
- intros dom.
  refine (@mk_fmono (A -o> U) (natO -o> U)
   (fun f n => [1/]1+pred (length dom) * f (nth n dom default)) _).
  unfold monotonic; intros; auto.
@@ -1156,7 +1157,7 @@ Section SUMDOM.
   unfold retract; intros.
   transitivity ([1/]1+length l); trivial.
   transitivity ([1-] sigma (fun n => [1/]1+length l) k0).
-  exact (fnth_retract (length l) _ H).
+  exact (fnth_retract (length l) H).
   apply Uinv_le_compat; apply sigma_le_compat; auto.
  Qed.
  
@@ -1543,7 +1544,7 @@ Add Parametric Relation A : (A -> Prop) (Fimp (A:=A))
  as Fimp_rel.
 
 Add Parametric Morphism A : (range (A:=A))
- with signature Fimp (A:=A) --> Oeq (O:=Distr A) ==> inverse impl 
+ with signature Fimp (A:=A) --> Oeq (O:=Distr A) ==> Basics.flip impl 
  as range_morph2.
 Proof.
  unfold Basics.flip, impl, Fimp; intros P Q H d1 d2 H0 H1.
@@ -1593,7 +1594,7 @@ Proof.
 Qed.
 
 Lemma range_strengthen : forall A (d:Distr A) (P Q:A -o> boolO),
- mu d (fone _) == 1%U ->
+ mu d (fone _) == 1 ->
  range P d -> 
  range Q d ->
  range (P [&&] Q) d.
@@ -1670,8 +1671,6 @@ Proof.
  rewrite (mu_cte d2 (f n)), H0; trivial.
  change (mu d1 (fcte _ (mu d2 (fun b => f b))) == mu d2 f).
  rewrite (mu_cte d1), H, Umult_one_right; trivial.
- apply mu_stable_eq; trivial.
- refine (ford_eq_intro _); trivial.
  unfold prodP; apply range_True.
 Qed.
 
@@ -1776,7 +1775,7 @@ Qed.
 
 Add Parametric Morphism A B : (lift (A:=A) (B:=B))
  with signature Fimp2 (A:=A) (B:=B) --> 
-  Oeq (O:=Distr (A * B)) ==> Oeq (O:=Distr A) ==> Oeq (O:=Distr B) ==> inverse impl
+  Oeq (O:=Distr (A * B)) ==> Oeq (O:=Distr A) ==> Oeq (O:=Distr B) ==> Basics.flip impl
  as lift_morph.
 Proof.
  unfold impl, Fimp2; intros R1 R2 H d1 d2 H0 d3 d4 H1 d5 d6 H2 H3.
@@ -2064,7 +2063,7 @@ Section DISCRETE.
 
  Definition bij_n_nxn k :=
   match @bij_n_nxn_aux (S k) (lt_O_Sn k) with
-  | existT i (exist j _) => (i, j)
+  | existT _ i (exist _ j _) => (i, j)
   end.
 
  Lemma mult_eq_reg_l : forall n m p, 
@@ -2692,7 +2691,8 @@ Qed.
      assumption.
      apply (PER_r _ _ H Hx).
    intros x1 x2 [x [H1 H2] ].  
-   destruct H. apply (PER_Transitive _ _ _ H1 H2).
+   destruct H.
+   eapply per_trans; eauto.
  Qed.
  
  Hint Unfold same_relation inclusion.
